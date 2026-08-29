@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DocumentStatus {
+  processing
+  ready
+  error
+}
+
+enum MessageRole {
+  user
+  assistant
+}
+
+enum ContradictionType {
+  factual
+  logical
+  temporal
+  numerical
+}
+
+enum ContradictionSeverity {
+  critical
+  warning
+  info
+}
+
+enum ContradictionStatus {
+  open
+  resolved
+  false_positive
+}
+
+model Document {
+  id          String         @id @default(uuid())
+  filename    String
+  mimeType    String
+  status      DocumentStatus @default(processing)
+  errorReason String?
+  metadata    Json           @default("{}")
+  uploadedAt  DateTime       @default(now())
+  chunks      Chunk[]
+
+  @@map("documents")
+}
+
+model Chunk {
+  id                    String   @id @default(uuid())
+  documentId            String
+  document              Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content               String
+  contextualizedContent String?
+  page                  Int?
+  section               String?
+  chunkIndex            Int
+  // embedding vector(n) column is added via raw-SQL migration (see migrations/*_add_pgvector.sql)
+  embedding             Unsupported("vector(1024)")?
+  createdAt             DateTime @default(now())
+
+  contradictionsAsA Contradiction[] @relation("ChunkA")
+  contradictionsAsB Contradiction[] @relation("ChunkB")
+
+  @@index([documentId])
+  @@map("chunks")
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  title     String?
+  createdAt DateTime  @default(now())
+  messages  Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  citedChunkIds  String[]     @default([])
+  confidence     Float?
+  fromCache      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+  @@map("messages")
+}
+
+model Contradiction {
+  id             String                @id @default(uuid())
+  chunkAId       String
+  chunkA         Chunk                 @relation("ChunkA", fields: [chunkAId], references: [id], onDelete: Cascade)
+  chunkBId       String
+  chunkB         Chunk                 @relation("ChunkB", fields: [chunkBId], references: [id], onDelete: Cascade)
+  statementA     String
+  statementB     String
+  type           ContradictionType
+  severity       ContradictionSeverity
+  status         ContradictionStatus   @default(open)
+  reasoning      String
+  reasoningTrace Json                  @default("{}")
+  createdAt      DateTime              @default(now())
+  resolvedAt     DateTime?
+
+  @@index([status])
+  @@map("contradictions")
+}
+
+model RequestLog {
+  id              String   @id @default(uuid())
+  stage           String
+  provider        String
+  model           String
+  tokensIn        Int      @default(0)
+  tokensOut       Int      @default(0)
+  latencyMs       Int
+  estimatedCostUsd Float   @default(0)
+  createdAt       DateTime @default(now())
+
+  @@map("request_logs")
+}
