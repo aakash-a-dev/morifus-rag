@@ -30,6 +30,12 @@ export const env = {
     embeddingModelId: process.env.BEDROCK_EMBEDDING_MODEL_ID ?? "amazon.titan-embed-text-v2:0",
     embeddingDimensions: parseInt(process.env.BEDROCK_EMBEDDING_DIMENSIONS ?? "1024", 10),
   },
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+    llmModel: process.env.GEMINI_LLM_MODEL ?? "gemini-3.6-flash",
+    embeddingModel: process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001",
+    embeddingDimensions: parseInt(process.env.GEMINI_EMBEDDING_DIMENSIONS ?? "1024", 10),
+  },
 
   contextualEnrichment: process.env.CONTEXTUAL_ENRICHMENT === "true",
 
