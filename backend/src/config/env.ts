@@ -32,7 +32,7 @@ export const env = {
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY,
-    llmModel: process.env.GEMINI_LLM_MODEL ?? "gemini-3.6-flash",
+    llmModel: process.env.GEMINI_LLM_MODEL ?? "gemini-3.1-flash-lite",
     embeddingModel: process.env.GEMINI_EMBEDDING_MODEL ?? "gemini-embedding-001",
     embeddingDimensions: parseInt(process.env.GEMINI_EMBEDDING_DIMENSIONS ?? "1024", 10),
   },

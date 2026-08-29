@@ -36,37 +36,61 @@ export class GeminiLLMProvider implements LLMProvider {
       }));
 
     try {
-      if (opts.onToken) {
-        const result = await model.generateContentStream({ contents });
-        let fullText = "";
-        for await (const chunk of result.stream) {
-          const delta = chunk.text();
-          if (delta) {
-            fullText += delta;
-            opts.onToken(delta);
-          }
-        }
-        const final = await result.response;
-        const usage = final.usageMetadata;
-        return {
-          text: fullText,
-          tokensIn: usage?.promptTokenCount ?? 0,
-          tokensOut: usage?.candidatesTokenCount ?? 0,
-          model: this.modelId,
-        };
-      }
-
-      const result = await model.generateContent({ contents });
-      const usage = result.response.usageMetadata;
-      return {
-        text: result.response.text(),
-        tokensIn: usage?.promptTokenCount ?? 0,
-        tokensOut: usage?.candidatesTokenCount ?? 0,
-        model: this.modelId,
-      };
+      return await this.withRetry(() => this.callGemini(model, contents, opts));
     } catch (err) {
       logger.error({ err, modelId: this.modelId }, "Gemini LLM generate failed");
       throw err;
     }
+  }
+
+  private async withRetry<T>(fn: () => Promise<T>, attempt = 1): Promise<T> {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const is429 = err?.status === 429 || /429|Too Many Requests|RESOURCE_EXHAUSTED/i.test(err?.message ?? "");
+      if (is429 && attempt <= 3) {
+        const retryDelayMatch = /"retryDelay":"(\d+)s"/.exec(err?.message ?? "");
+        const waitMs = retryDelayMatch ? parseInt(retryDelayMatch[1], 10) * 1000 : attempt * 3000;
+        logger.warn({ attempt, waitMs }, "Gemini rate-limited, backing off");
+        await new Promise((resolve) => setTimeout(resolve, waitMs));
+        return this.withRetry(fn, attempt + 1);
+      }
+      throw err;
+    }
+  }
+
+  private async callGemini(
+    model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
+    contents: { role: "user" | "model"; parts: { text: string }[] }[],
+    opts: LLMGenerateOptions
+  ): Promise<LLMGenerateResult> {
+    if (opts.onToken) {
+      const result = await model.generateContentStream({ contents });
+      let fullText = "";
+      for await (const chunk of result.stream) {
+        const delta = chunk.text();
+        if (delta) {
+          fullText += delta;
+          opts.onToken(delta);
+        }
+      }
+      const final = await result.response;
+      const usage = final.usageMetadata;
+      return {
+        text: fullText,
+        tokensIn: usage?.promptTokenCount ?? 0,
+        tokensOut: usage?.candidatesTokenCount ?? 0,
+        model: this.modelId,
+      };
+    }
+
+    const result = await model.generateContent({ contents });
+    const usage = result.response.usageMetadata;
+    return {
+      text: result.response.text(),
+      tokensIn: usage?.promptTokenCount ?? 0,
+      tokensOut: usage?.candidatesTokenCount ?? 0,
+      model: this.modelId,
+    };
   }
 }

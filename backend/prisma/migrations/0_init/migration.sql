@@ -36,7 +36,7 @@ CREATE TABLE "chunks" (
 
 -- pgvector embedding column (1024 dims = Titan Text Embeddings V2 default output size)
 ALTER TABLE "chunks" ADD COLUMN "embedding" vector(1024);
-CREATE INDEX "chunks_embedding_idx" ON "chunks" USING ivfflat ("embedding" vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX "chunks_embedding_idx" ON "chunks" USING hnsw ("embedding" vector_cosine_ops);
 CREATE INDEX "chunks_documentId_idx" ON "chunks"("documentId");
 
 -- conversations
