@@ -12,7 +12,7 @@ import { enrichChunk } from "./contextualEnrichment";
 import { IngestJobPayload } from "../queue/rabbitmq";
 
 export async function runIngestionPipeline(job: IngestJobPayload): Promise<void> {
-  const { documentId, filePath, mimeType, filename } = job;
+  const { documentId, workspaceId, filePath, mimeType, filename } = job;
 
   try {
     await publishProgress({ documentId, stage: "parsing", progress: 10 });
@@ -49,6 +49,8 @@ export async function runIngestionPipeline(job: IngestJobPayload): Promise<void>
         const created = await prisma.chunk.create({
           data: {
             documentId,
+            workspaceId,
+            filename,
             content: chunks[i].content,
             contextualizedContent: env.contextualEnrichment ? contents[i] : null,
             page: chunks[i].page,

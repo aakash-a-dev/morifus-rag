@@ -13,6 +13,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json();
 }
 
+export interface WorkspaceDto {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  _count?: { documents: number };
+}
+
 export interface DocumentDto {
   id: string;
   filename: string;
@@ -22,6 +30,7 @@ export interface DocumentDto {
   uploadedAt: string;
   metadata: Record<string, unknown>;
   _count?: { chunks: number };
+  deduped?: boolean;
 }
 
 export interface Citation {
@@ -59,26 +68,42 @@ export interface ChatResponse {
   trace: { retrievedChunks: { chunkId: string; filename: string; similarity: number; rerankScore: number }[] };
 }
 
+// Workspace management - not scoped to any single workspace.
+export const workspaceApi = {
+  create: (name: string) => request<WorkspaceDto>("/api/workspaces", { method: "POST", body: JSON.stringify({ name }) }),
+  get: (slug: string) => request<WorkspaceDto>(`/api/workspaces/${slug}`),
+  list: () => request<WorkspaceDto[]>("/api/workspaces"),
+};
+
+export const DEMO_WORKSPACE_SLUG = "aakash-demo";
+
+/** Everything below is scoped to one workspace via its slug in the URL path. */
+export function createWorkspaceApi(slug: string) {
+  const base = `/api/workspaces/${slug}`;
+  return {
+    listDocuments: () => request<DocumentDto[]>(`${base}/documents`),
+    deleteDocument: (id: string) => request<void>(`${base}/documents/${id}`, { method: "DELETE" }),
+    loadDemoData: () => request<{ documents: DocumentDto[] }>("/api/dev/load-demo-data", { method: "POST" }),
+    uploadFiles: async (files: File[]) => {
+      const form = new FormData();
+      files.forEach((f) => form.append("files", f));
+      const res = await fetch(`${API_URL}${base}/documents/upload`, { method: "POST", body: form });
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json() as Promise<{ documents: DocumentDto[]; errors: { filename: string; message: string }[] }>;
+    },
+    ask: (query: string, conversationId?: string, documentIds: string[] = []) =>
+      request<ChatResponse>(`${base}/chat/ask`, {
+        method: "POST",
+        body: JSON.stringify({ query, conversationId, documentIds }),
+      }),
+    listContradictions: (status?: string) =>
+      request<any[]>(`${base}/contradictions${status ? `?status=${status}` : ""}`),
+    updateContradictionStatus: (id: string, status: "resolved" | "false_positive" | "open") =>
+      request(`${base}/contradictions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  };
+}
+
 export const api = {
-  listDocuments: () => request<DocumentDto[]>("/api/documents"),
-  deleteDocument: (id: string) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
-  loadDemoData: () => request<{ documents: DocumentDto[] }>("/api/dev/load-demo-data", { method: "POST" }),
-  uploadFiles: async (files: File[]) => {
-    const form = new FormData();
-    files.forEach((f) => form.append("files", f));
-    const res = await fetch(`${API_URL}/api/documents/upload`, { method: "POST", body: form });
-    if (!res.ok) throw new Error("Upload failed");
-    return res.json();
-  },
-  ask: (query: string, conversationId?: string, documentIds: string[] = []) =>
-    request<ChatResponse>("/api/chat/ask", {
-      method: "POST",
-      body: JSON.stringify({ query, conversationId, documentIds }),
-    }),
-  listContradictions: (status?: string) =>
-    request<any[]>(`/api/contradictions${status ? `?status=${status}` : ""}`),
-  updateContradictionStatus: (id: string, status: "resolved" | "false_positive" | "open") =>
-    request(`/api/contradictions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   metrics: () => request<any>("/api/dev/metrics"),
 };
 

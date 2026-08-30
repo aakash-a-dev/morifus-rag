@@ -6,7 +6,8 @@ import { Trash2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { api, DocumentDto } from "@/lib/api";
+import { DocumentDto } from "@/lib/api";
+import { useWorkspace } from "@/lib/workspace-context";
 
 const STATUS_VARIANT: Record<string, "outline" | "secondary" | "destructive"> = {
   ready: "outline",
@@ -15,6 +16,7 @@ const STATUS_VARIANT: Record<string, "outline" | "secondary" | "destructive"> = 
 };
 
 export default function DocumentsPage() {
+  const { api } = useWorkspace();
   const [docs, setDocs] = useState<DocumentDto[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -14,17 +14,18 @@ const askSchema = z.object({
 
 chatRouter.post("/ask", validateBody(askSchema), async (req, res, next) => {
   try {
+    const workspaceId = req.workspaceId!;
     const { conversationId, query, documentIds } = req.body as z.infer<typeof askSchema>;
 
     const conversation = conversationId
-      ? await prisma.conversation.findUnique({ where: { id: conversationId } })
-      : await prisma.conversation.create({ data: { title: query.slice(0, 60) } });
+      ? await prisma.conversation.findFirst({ where: { id: conversationId, workspaceId } })
+      : await prisma.conversation.create({ data: { workspaceId, title: query.slice(0, 60) } });
 
     if (!conversation) {
       return res.status(404).json({ error: "NotFound", message: "Conversation not found" });
     }
 
-    const result = await answerQuery(conversation.id, query, documentIds);
+    const result = await answerQuery(workspaceId, conversation.id, query, documentIds);
     res.json({ conversationId: conversation.id, ...result });
   } catch (err) {
     next(err);
@@ -33,6 +34,11 @@ chatRouter.post("/ask", validateBody(askSchema), async (req, res, next) => {
 
 chatRouter.get("/conversations/:id/messages", async (req, res, next) => {
   try {
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: req.params.id, workspaceId: req.workspaceId! },
+    });
+    if (!conversation) return res.status(404).json({ error: "NotFound" });
+
     const messages = await prisma.message.findMany({
       where: { conversationId: req.params.id },
       orderBy: { createdAt: "asc" },

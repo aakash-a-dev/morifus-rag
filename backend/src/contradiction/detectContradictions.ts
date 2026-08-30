@@ -35,6 +35,7 @@ interface LLMVerdict {
  * skipped heuristically before spending an LLM call.
  */
 export async function detectContradictions(
+  workspaceId: string,
   retrievedChunks: SimilarChunkRow[]
 ): Promise<ContradictionFinding[]> {
   const findings: ContradictionFinding[] = [];
@@ -42,6 +43,7 @@ export async function detectContradictions(
 
   for (const chunk of retrievedChunks) {
     const neighbors = await findNeighborsOfChunk(
+      workspaceId,
       chunk.id,
       3,
       env.retrieval.contradictionSimilarityThreshold
@@ -56,6 +58,7 @@ export async function detectContradictions(
 
       const existing = await prisma.contradiction.findFirst({
         where: {
+          workspaceId,
           OR: [
             { chunkAId: chunk.id, chunkBId: neighbor.id },
             { chunkAId: neighbor.id, chunkBId: chunk.id },
@@ -72,6 +75,7 @@ export async function detectContradictions(
 
       const created = await prisma.contradiction.create({
         data: {
+          workspaceId,
           chunkAId: chunk.id,
           chunkBId: neighbor.id,
           statementA: verdict.statementA ?? chunk.content.slice(0, 300),

@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { api, ChatResponse } from "@/lib/api";
+import { ChatResponse } from "@/lib/api";
+import { useWorkspace } from "@/lib/workspace-context";
 
 interface ChatTurn {
   role: "user" | "assistant";
@@ -22,6 +23,7 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 export default function ChatPage() {
+  const { api } = useWorkspace();
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>();

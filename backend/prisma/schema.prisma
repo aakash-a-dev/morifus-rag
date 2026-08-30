@@ -38,23 +38,57 @@ enum ContradictionStatus {
   false_positive
 }
 
+// No auth in this assignment: a workspace's slug IS its access control. Anyone
+// with the URL can open it. That's an intentional demo-grade tradeoff, not an
+// oversight — real multi-tenancy would need auth + row-level security on top
+// of this same workspaceId scoping.
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  documents     Document[]
+  chunks        Chunk[]
+  conversations Conversation[]
+
+  @@map("workspaces")
+}
+
 model Document {
   id          String         @id @default(uuid())
+  workspaceId String
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   filename    String
   mimeType    String
   status      DocumentStatus @default(processing)
   errorReason String?
+  // sha256 of the raw uploaded file bytes. Paired with the unique constraint
+  // below, this makes re-uploading the same file in the same workspace a
+  // no-op instead of re-running the whole parse/chunk/embed pipeline.
+  contentHash String?
   metadata    Json           @default("{}")
   uploadedAt  DateTime       @default(now())
   chunks      Chunk[]
 
+  @@unique([workspaceId, contentHash])
+  @@index([workspaceId])
   @@map("documents")
 }
 
 model Chunk {
-  id                    String   @id @default(uuid())
-  documentId            String
-  document              Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  id          String    @id @default(uuid())
+  documentId  String
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  // Denormalized on purpose: the hot retrieval path (vector similarity
+  // search) needs to filter by workspace and needs the filename for
+  // citations on every single chat query. Forcing a join up to `documents`
+  // for that on every query is the wrong tradeoff at this access pattern -
+  // a few extra bytes per row buys a strictly simpler, faster query.
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  filename    String
+
   content               String
   contextualizedContent String?
   page                  Int?
@@ -68,15 +102,19 @@ model Chunk {
   contradictionsAsB Contradiction[] @relation("ChunkB")
 
   @@index([documentId])
+  @@index([workspaceId])
   @@map("chunks")
 }
 
 model Conversation {
-  id        String    @id @default(uuid())
-  title     String?
-  createdAt DateTime  @default(now())
-  messages  Message[]
+  id          String    @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  title       String?
+  createdAt   DateTime  @default(now())
+  messages    Message[]
 
+  @@index([workspaceId])
   @@map("conversations")
 }
 
@@ -97,6 +135,7 @@ model Message {
 
 model Contradiction {
   id             String                @id @default(uuid())
+  workspaceId    String
   chunkAId       String
   chunkA         Chunk                 @relation("ChunkA", fields: [chunkAId], references: [id], onDelete: Cascade)
   chunkBId       String
@@ -112,6 +151,7 @@ model Contradiction {
   resolvedAt     DateTime?
 
   @@index([status])
+  @@index([workspaceId])
   @@map("contradictions")
 }
 

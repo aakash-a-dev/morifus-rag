@@ -9,7 +9,7 @@ contradictionsRouter.get("/", async (req, res, next) => {
   try {
     const status = req.query.status as string | undefined;
     const contradictions = await prisma.contradiction.findMany({
-      where: status ? { status: status as any } : undefined,
+      where: { workspaceId: req.workspaceId!, ...(status ? { status: status as any } : {}) },
       orderBy: { createdAt: "desc" },
       include: {
         chunkA: { include: { document: true } },
@@ -29,6 +29,11 @@ const statusSchema = z.object({
 contradictionsRouter.patch("/:id/status", validateBody(statusSchema), async (req, res, next) => {
   try {
     const { status } = req.body as z.infer<typeof statusSchema>;
+    const existing = await prisma.contradiction.findFirst({
+      where: { id: req.params.id, workspaceId: req.workspaceId! },
+    });
+    if (!existing) return res.status(404).json({ error: "NotFound" });
+
     const updated = await prisma.contradiction.update({
       where: { id: req.params.id },
       data: { status, resolvedAt: status === "open" ? null : new Date() },

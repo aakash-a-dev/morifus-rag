@@ -24,11 +24,12 @@ export interface ChatAnswer {
 }
 
 export async function answerQuery(
+  workspaceId: string,
   conversationId: string,
   query: string,
   documentIds: string[] = []
 ): Promise<ChatAnswer> {
-  const cached = await getCachedAnswer(query, documentIds);
+  const cached = await getCachedAnswer(workspaceId, query, documentIds);
   if (cached) {
     await persistMessage(conversationId, query, cached.answer, [], cached.confidence, true);
     return { ...cached, fromCache: true, contradictions: [], trace: { retrievedChunks: [] } };
@@ -40,7 +41,7 @@ export async function answerQuery(
     return { ...result, tokensOut: 0 };
   });
 
-  const similar = await findSimilarChunks(vectors[0], env.retrieval.topK);
+  const similar = await findSimilarChunks(workspaceId, vectors[0], env.retrieval.topK);
   const reranked = rerankChunks(query, similar);
 
   const topScore = reranked[0]?.similarity ?? 0;
@@ -95,10 +96,10 @@ export async function answerQuery(
     ? `⚠️ Limited relevant context found in your documents for this question.\n\n${text}`
     : text;
 
-  const contradictions = await detectContradictions(reranked);
+  const contradictions = await detectContradictions(workspaceId, reranked);
 
   await persistMessage(conversationId, query, finalAnswer, citations.map((c) => c.chunkId), topScore, false);
-  await setCachedAnswer(query, documentIds, {
+  await setCachedAnswer(workspaceId, query, documentIds, {
     answer: finalAnswer,
     citations,
     confidence: topScore,

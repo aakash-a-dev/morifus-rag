@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import { Toaster } from "sonner";
-import { NavBar } from "@/components/nav-bar";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -13,7 +12,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "Document Intelligence",
-  description: "Upload documents, ask questions, and surface contradictions across your sources.",
+  description: "Create a workspace, upload documents, ask questions, and surface contradictions across your sources.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -21,8 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={poppins.variable}>
       <body>
         <div className="min-h-screen flex flex-col">
-          <NavBar />
-          <main className="flex-1 container py-8">{children}</main>
+          <main className="flex-1">{children}</main>
         </div>
         <Toaster position="top-right" richColors />
       </body>

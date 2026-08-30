@@ -4,6 +4,11 @@ import { prisma } from "../db/prisma";
  * All raw pgvector SQL is isolated to this file. Prisma Client cannot type
  * or bind the `vector` column, so inserts/updates and similarity search go
  * through $executeRawUnsafe/$queryRaw with a manually-formatted literal.
+ *
+ * workspaceId/filename are read directly off `chunks` (denormalized at
+ * ingest time) rather than joined from `documents` - this is the hot path
+ * for every chat query, and a workspace-scoped equality filter here combines
+ * well with the HNSW ANN index without paying for a join every time.
  */
 
 function toVectorLiteral(embedding: number[]): string {
@@ -21,6 +26,7 @@ export async function setChunkEmbedding(chunkId: string, embedding: number[]): P
 export interface SimilarChunkRow {
   id: string;
   documentId: string;
+  workspaceId: string;
   content: string;
   contextualizedContent: string | null;
   page: number | null;
@@ -32,26 +38,27 @@ export interface SimilarChunkRow {
 }
 
 export async function findSimilarChunks(
+  workspaceId: string,
   embedding: number[],
   topK: number,
   excludeChunkIds: string[] = []
 ): Promise<SimilarChunkRow[]> {
   const vectorLiteral = toVectorLiteral(embedding);
   const exclusionClause = excludeChunkIds.length
-    ? `AND c."id" NOT IN (${excludeChunkIds.map((_, i) => `$${i + 3}`).join(",")})`
+    ? `AND c."id" NOT IN (${excludeChunkIds.map((_, i) => `$${i + 4}`).join(",")})`
     : "";
 
   const rows = await prisma.$queryRawUnsafe<SimilarChunkRow[]>(
-    `SELECT c."id", c."documentId", c."content", c."contextualizedContent", c."page",
-            c."section", c."chunkIndex", c."createdAt", d."filename",
+    `SELECT c."id", c."documentId", c."workspaceId", c."content", c."contextualizedContent", c."page",
+            c."section", c."chunkIndex", c."createdAt", c."filename",
             1 - (c."embedding" <=> $1::vector) AS similarity
      FROM "chunks" c
-     JOIN "documents" d ON d."id" = c."documentId"
-     WHERE c."embedding" IS NOT NULL ${exclusionClause}
+     WHERE c."embedding" IS NOT NULL AND c."workspaceId" = $3 ${exclusionClause}
      ORDER BY c."embedding" <=> $1::vector
      LIMIT $2`,
     vectorLiteral,
     topK,
+    workspaceId,
     ...excludeChunkIds
   );
 
@@ -60,18 +67,19 @@ export async function findSimilarChunks(
 
 /** Fetch near-neighbors of a specific chunk (used by contradiction detection). */
 export async function findNeighborsOfChunk(
+  workspaceId: string,
   chunkId: string,
   topK: number,
   minSimilarity: number
 ): Promise<SimilarChunkRow[]> {
   const rows = await prisma.$queryRawUnsafe<SimilarChunkRow[]>(
-    `SELECT c."id", c."documentId", c."content", c."contextualizedContent", c."page",
-            c."section", c."chunkIndex", c."createdAt", d."filename",
+    `SELECT c."id", c."documentId", c."workspaceId", c."content", c."contextualizedContent", c."page",
+            c."section", c."chunkIndex", c."createdAt", c."filename",
             1 - (c."embedding" <=> target."embedding") AS similarity
      FROM "chunks" c
-     JOIN "documents" d ON d."id" = c."documentId"
      JOIN "chunks" target ON target."id" = $1
      WHERE c."embedding" IS NOT NULL
+       AND c."workspaceId" = $4
        AND c."id" != $1
        AND c."documentId" != target."documentId"
        AND 1 - (c."embedding" <=> target."embedding") >= $2
@@ -79,7 +87,8 @@ export async function findNeighborsOfChunk(
      LIMIT $3`,
     chunkId,
     minSimilarity,
-    topK
+    topK,
+    workspaceId
   );
 
   return rows;

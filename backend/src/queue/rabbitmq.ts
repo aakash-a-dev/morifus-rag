@@ -33,6 +33,7 @@ export async function getChannel(): Promise<Channel> {
 
 export interface IngestJobPayload {
   documentId: string;
+  workspaceId: string;
   filePath: string;
   mimeType: string;
   filename: string;

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { api } from "@/lib/api";
+import { useWorkspace } from "@/lib/workspace-context";
 
 const SEVERITY_VARIANT: Record<string, "destructive" | "secondary" | "outline"> = {
   critical: "destructive",
@@ -17,6 +17,7 @@ const SEVERITY_VARIANT: Record<string, "destructive" | "secondary" | "outline"> 
 };
 
 export default function ContradictionsPage() {
+  const { api } = useWorkspace();
   const [items, setItems] = useState<any[]>([]);
   const [tab, setTab] = useState("open");
   const [loading, setLoading] = useState(true);

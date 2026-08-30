@@ -2,14 +2,14 @@ import crypto from "crypto";
 import { redis } from "./redisClient";
 import { env } from "../config/env";
 
-function cacheKey(query: string, documentIds: string[]): string {
+function cacheKey(workspaceId: string, query: string, documentIds: string[]): string {
   const hash = crypto
     .createHash("sha256")
     .update(query.trim().toLowerCase())
     .update("|")
     .update([...documentIds].sort().join(","))
     .digest("hex");
-  return `chat:cache:${hash}`;
+  return `chat:cache:${workspaceId}:${hash}`;
 }
 
 import { Citation } from "../chat/ragChat.types";
@@ -22,17 +22,24 @@ export interface CachedChatAnswer {
 }
 
 export async function getCachedAnswer(
+  workspaceId: string,
   query: string,
   documentIds: string[]
 ): Promise<CachedChatAnswer | null> {
-  const raw = await redis.get(cacheKey(query, documentIds));
+  const raw = await redis.get(cacheKey(workspaceId, query, documentIds));
   return raw ? (JSON.parse(raw) as CachedChatAnswer) : null;
 }
 
 export async function setCachedAnswer(
+  workspaceId: string,
   query: string,
   documentIds: string[],
   value: CachedChatAnswer
 ): Promise<void> {
-  await redis.set(cacheKey(query, documentIds), JSON.stringify(value), "EX", env.chatCacheTtlSeconds);
+  await redis.set(
+    cacheKey(workspaceId, query, documentIds),
+    JSON.stringify(value),
+    "EX",
+    env.chatCacheTtlSeconds
+  );
 }

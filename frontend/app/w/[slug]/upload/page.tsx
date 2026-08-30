@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { UploadCloud, FileText, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { UploadCloud, FileText, Loader2, CheckCircle2, XCircle, CopyCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { api, progressStreamUrl } from "@/lib/api";
+import { progressStreamUrl, DocumentDto } from "@/lib/api";
+import { useWorkspace } from "@/lib/workspace-context";
 
 interface TrackedFile {
   documentId: string;
@@ -13,9 +14,11 @@ interface TrackedFile {
   stage: string;
   progress: number;
   message?: string;
+  deduped?: boolean;
 }
 
 export default function UploadPage() {
+  const { api } = useWorkspace();
   const [files, setFiles] = useState<TrackedFile[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -33,21 +36,42 @@ export default function UploadPage() {
     return () => es.close();
   }, []);
 
-  const upload = useCallback(async (fileList: File[]) => {
-    setUploading(true);
-    try {
-      const { documents, errors } = await api.uploadFiles(fileList);
-      setFiles((prev) => [
-        ...prev,
-        ...documents.map((d: any) => ({ documentId: d.id, filename: d.filename, stage: "queued", progress: 5 })),
-      ]);
-      errors?.forEach((e: any) => toast.error(`${e.filename}: ${e.message}`));
-    } catch (err) {
-      toast.error("Upload failed. Please try again.");
-    } finally {
-      setUploading(false);
+  const trackResults = (documents: DocumentDto[]) => {
+    setFiles((prev) => [
+      ...prev,
+      ...documents.map((d) => ({
+        documentId: d.id,
+        filename: d.filename,
+        stage: d.deduped ? "ready" : "queued",
+        progress: d.deduped ? 100 : 5,
+        deduped: d.deduped,
+      })),
+    ]);
+    const dedupedCount = documents.filter((d) => d.deduped).length;
+    if (dedupedCount > 0) {
+      toast.info(
+        dedupedCount === 1
+          ? "Already uploaded — reused the existing version instead of re-processing."
+          : `${dedupedCount} files were already uploaded — reused existing versions.`
+      );
     }
-  }, []);
+  };
+
+  const upload = useCallback(
+    async (fileList: File[]) => {
+      setUploading(true);
+      try {
+        const { documents, errors } = await api.uploadFiles(fileList);
+        trackResults(documents);
+        errors?.forEach((e) => toast.error(`${e.filename}: ${e.message}`));
+      } catch (err) {
+        toast.error("Upload failed. Please try again.");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [api]
+  );
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -60,11 +84,8 @@ export default function UploadPage() {
     setUploading(true);
     try {
       const { documents } = await api.loadDemoData();
-      setFiles((prev) => [
-        ...prev,
-        ...documents.map((d: any) => ({ documentId: d.id, filename: d.filename, stage: "queued", progress: 5 })),
-      ]);
-      toast.success("Demo HR policy set loaded — 5 documents queued for processing.");
+      trackResults(documents);
+      toast.success("Demo HR policy set loaded.");
     } catch {
       toast.error("Could not load demo data.");
     } finally {
@@ -77,7 +98,8 @@ export default function UploadPage() {
       <div>
         <h1 className="text-2xl font-semibold">Upload documents</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          PDF, DOCX, Markdown, or plain text. Documents are chunked, embedded, and indexed automatically.
+          PDF, DOCX, Markdown, or plain text. Documents are chunked, embedded, and indexed automatically. Re-uploading
+          an identical file is detected and skipped.
         </p>
       </div>
 
@@ -132,8 +154,9 @@ export default function UploadPage() {
                       style={{ width: `${f.progress}%` }}
                     />
                   </div>
+                  {f.deduped && <p className="mt-1 text-xs text-muted-foreground">Already uploaded — reused existing version</p>}
                 </div>
-                <StageIcon stage={f.stage} />
+                <StageIcon stage={f.stage} deduped={f.deduped} />
               </div>
             ))}
           </CardContent>
@@ -143,7 +166,8 @@ export default function UploadPage() {
   );
 }
 
-function StageIcon({ stage }: { stage: string }) {
+function StageIcon({ stage, deduped }: { stage: string; deduped?: boolean }) {
+  if (deduped) return <CopyCheck className="h-4 w-4 text-muted-foreground" />;
   if (stage === "ready") return <CheckCircle2 className="h-4 w-4 text-foreground" />;
   if (stage === "error") return <XCircle className="h-4 w-4 text-destructive" />;
   return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
