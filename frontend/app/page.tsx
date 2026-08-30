@@ -43,7 +43,7 @@ export default function HomePage() {
         <h1 className="font-heading text-3xl font-semibold tracking-tight">Document Intelligence</h1>
         <p className="mx-auto max-w-xl text-sm text-muted-foreground">
           Upload documents, ask grounded questions with citations, and surface contradictions across sources. No
-          account needed — create a workspace and share its link.
+          account needed, just create a workspace and share its link.
         </p>
       </div>
 
@@ -56,7 +56,7 @@ export default function HomePage() {
             </div>
             <CardTitle>Aakash's Demo Workspace</CardTitle>
             <CardDescription>
-              Pre-loaded HR &amp; policy documents with planted contradictions — see the system work in seconds.
+              Pre-loaded HR &amp; policy documents with planted contradictions. See the system work in seconds.
             </CardDescription>
           </CardHeader>
           <CardContent>

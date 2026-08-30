@@ -40,7 +40,7 @@ enum ContradictionStatus {
 
 // No auth in this assignment: a workspace's slug IS its access control. Anyone
 // with the URL can open it. That's an intentional demo-grade tradeoff, not an
-// oversight — real multi-tenancy would need auth + row-level security on top
+// oversight. Real multi-tenancy would need auth + row-level security on top
 // of this same workspaceId scoping.
 model Workspace {
   id        String   @id @default(uuid())

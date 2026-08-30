@@ -1,4 +1,4 @@
-# Employee Handbook — Section 4: Workplace Flexibility
+# Employee Handbook: Section 4, Workplace Flexibility
 
 **Document owner:** HR Leadership
 **Effective date:** March 15, 2025

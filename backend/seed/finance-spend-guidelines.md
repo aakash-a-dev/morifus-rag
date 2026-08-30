@@ -1,6 +1,6 @@
 # Finance Spend Guidelines (Regional Addendum)
 
-**Document owner:** Finance — APAC Region
+**Document owner:** Finance, APAC Region
 **Effective date:** February 1, 2025
 
 ## Self-Approval Limit

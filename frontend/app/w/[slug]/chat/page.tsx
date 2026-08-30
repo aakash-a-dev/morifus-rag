@@ -350,7 +350,7 @@ function AssistantMessage({ turn }: { turn: ChatTurn }) {
                   <HoverCardContent>
                     <p className="mb-1 text-xs font-medium text-muted-foreground">
                       {c.filename}
-                      {c.section ? ` — ${c.section}` : ""}
+                      {c.section ? `, ${c.section}` : ""}
                     </p>
                     <p className="text-xs leading-relaxed">{c.excerpt}...</p>
                   </HoverCardContent>
@@ -364,7 +364,7 @@ function AssistantMessage({ turn }: { turn: ChatTurn }) {
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <span>
                 Found {m.contradictionCount} potential contradiction{m.contradictionCount > 1 ? "s" : ""} related to
-                this answer — see the Contradictions dashboard.
+                this answer. See the Contradictions dashboard.
               </span>
             </div>
           )}

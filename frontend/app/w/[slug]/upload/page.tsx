@@ -51,8 +51,8 @@ export default function UploadPage() {
     if (dedupedCount > 0) {
       toast.info(
         dedupedCount === 1
-          ? "Already uploaded — reused the existing version instead of re-processing."
-          : `${dedupedCount} files were already uploaded — reused existing versions.`
+          ? "Already uploaded. Reused the existing version instead of re-processing."
+          : `${dedupedCount} files were already uploaded. Reused existing versions.`
       );
     }
   };
@@ -154,7 +154,7 @@ export default function UploadPage() {
                       style={{ width: `${f.progress}%` }}
                     />
                   </div>
-                  {f.deduped && <p className="mt-1 text-xs text-muted-foreground">Already uploaded — reused existing version</p>}
+                  {f.deduped && <p className="mt-1 text-xs text-muted-foreground">Already uploaded, reused existing version</p>}
                 </div>
                 <StageIcon stage={f.stage} deduped={f.deduped} />
               </div>

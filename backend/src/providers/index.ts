@@ -8,7 +8,7 @@ import { GeminiEmbeddingProvider } from "./gemini/geminiEmbedding";
 
 /**
  * Provider factory. Every consumer depends on the LLMProvider/EmbeddingProvider
- * interfaces, not on a specific vendor — swapping providers is an env change
+ * interfaces, not on a specific vendor. Swapping providers is an env change
  * plus one class here, nothing else changes.
  */
 function createLLMProvider(): LLMProvider {

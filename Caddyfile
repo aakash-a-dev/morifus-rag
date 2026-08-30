@@ -1,0 +1,12 @@
+{$APP_DOMAIN} {
+	handle /api/* {
+		reverse_proxy backend:4000
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
+}
+
+{$MQ_DOMAIN} {
+	reverse_proxy rabbitmq:15672
+}

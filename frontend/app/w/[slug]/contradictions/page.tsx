@@ -126,7 +126,7 @@ function StatementBlock({ label, filename, page, text }: { label: string; filena
   return (
     <div className="rounded-md border border-border p-3">
       <p className="text-xs font-medium text-muted-foreground">
-        {label} — {filename ?? "unknown"}
+        {label}: {filename ?? "unknown"}
         {page ? ` p.${page}` : ""}
       </p>
       <p className="mt-1 text-sm">"{text}"</p>

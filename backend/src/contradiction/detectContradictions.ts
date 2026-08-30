@@ -101,7 +101,7 @@ export async function detectContradictions(
 function looksLikeSupersedingRevision(_a: SimilarChunkRow, _b: SimilarChunkRow): boolean {
   // Cheap pre-LLM heuristic guard slot. Real revision detection needs a
   // structured "effective date" field per document, which is out of scope
-  // for this assignment — the LLM judge prompt is explicitly instructed to
+  // for this assignment. The LLM judge prompt is explicitly instructed to
   // treat clear revisions as non-contradictions instead, so this stays a
   // no-op filter for now rather than risk false-negatives on real conflicts.
   return false;

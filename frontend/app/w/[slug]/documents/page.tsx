@@ -76,7 +76,7 @@ export default function DocumentsPage() {
                     <p className="mt-1 text-xs text-muted-foreground">{doc.errorReason}</p>
                   )}
                 </TableCell>
-                <TableCell>{doc._count?.chunks ?? "—"}</TableCell>
+                <TableCell>{doc._count?.chunks ?? "-"}</TableCell>
                 <TableCell className="text-muted-foreground">{new Date(doc.uploadedAt).toLocaleString()}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => remove(doc.id)}>
