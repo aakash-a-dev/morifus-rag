@@ -67,6 +67,10 @@ model Document {
   // below, this makes re-uploading the same file in the same workspace a
   // no-op instead of re-running the whole parse/chunk/embed pipeline.
   contentHash String?
+  // Path to the raw uploaded file on the uploads volume, kept around (not
+  // deleted after ingestion) so the original document can be previewed or
+  // downloaded later, not just its extracted chunks.
+  storedPath  String?
   metadata    Json           @default("{}")
   uploadedAt  DateTime       @default(now())
   chunks      Chunk[]

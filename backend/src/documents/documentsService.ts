@@ -74,6 +74,7 @@ export async function ingestUpload(
         mimeType: file.mimetype || "application/octet-stream",
         status: "processing",
         contentHash,
+        storedPath: filePath,
       },
     });
 
@@ -111,8 +112,24 @@ export async function getDocument(id: string, workspaceId: string) {
 }
 
 export async function deleteDocument(id: string, workspaceId: string) {
-  const result = await prisma.document.deleteMany({ where: { id, workspaceId } });
-  if (result.count === 0) {
+  const doc = await prisma.document.findFirst({ where: { id, workspaceId } });
+  if (!doc) {
     throw new Error("Document not found in this workspace");
   }
+  await prisma.document.delete({ where: { id: doc.id } });
+  if (doc.storedPath) {
+    await fs.unlink(doc.storedPath).catch(() => {});
+  }
+}
+
+/** Concatenated extracted text, in chunk order, used for the preview modal. */
+export async function getDocumentText(id: string, workspaceId: string) {
+  const doc = await prisma.document.findFirst({ where: { id, workspaceId } });
+  if (!doc) return null;
+  const chunks = await prisma.chunk.findMany({
+    where: { documentId: id },
+    orderBy: { chunkIndex: "asc" },
+    select: { content: true },
+  });
+  return { document: doc, text: chunks.map((c) => c.content).join("\n\n") };
 }

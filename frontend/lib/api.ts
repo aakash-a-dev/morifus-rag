@@ -121,6 +121,9 @@ export function createWorkspaceApi(slug: string) {
       request<any[]>(`${base}/contradictions${status ? `?status=${status}` : ""}`),
     updateContradictionStatus: (id: string, status: "resolved" | "false_positive" | "open") =>
       request(`${base}/contradictions/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+    getDocumentText: (id: string) =>
+      request<{ document: DocumentDto; text: string }>(`${base}/documents/${id}/text`),
+    documentFileUrl: (id: string) => `${API_URL}${base}/documents/${id}/file`,
   };
 }
 

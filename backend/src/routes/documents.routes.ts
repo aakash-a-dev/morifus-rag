@@ -1,6 +1,13 @@
 import { Router } from "express";
 import multer from "multer";
-import { ingestUpload, listDocuments, getDocument, deleteDocument } from "../documents/documentsService";
+import fs from "fs";
+import {
+  ingestUpload,
+  listDocuments,
+  getDocument,
+  getDocumentText,
+  deleteDocument,
+} from "../documents/documentsService";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
@@ -41,6 +48,40 @@ documentsRouter.get("/:id", async (req, res, next) => {
     const doc = await getDocument(req.params.id, req.workspaceId!);
     if (!doc) return res.status(404).json({ error: "NotFound" });
     res.json(doc);
+  } catch (err) {
+    next(err);
+  }
+});
+
+documentsRouter.get("/:id/text", async (req, res, next) => {
+  try {
+    const result = await getDocumentText(req.params.id, req.workspaceId!);
+    if (!result) return res.status(404).json({ error: "NotFound" });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Serves the original uploaded file itself, PDFs and text render inline in
+// the browser for previewing; anything else (DOCX) downloads instead, since
+// browsers can't render it inline.
+documentsRouter.get("/:id/file", async (req, res, next) => {
+  try {
+    const doc = await getDocument(req.params.id, req.workspaceId!);
+    if (!doc || !doc.storedPath) return res.status(404).json({ error: "NotFound" });
+    if (!fs.existsSync(doc.storedPath)) {
+      return res.status(404).json({ error: "NotFound", message: "Original file is no longer available" });
+    }
+
+    const inlineTypes = ["application/pdf", "text/plain", "text/markdown"];
+    const contentType = doc.mimeType === "text/markdown" ? "text/plain" : doc.mimeType;
+    res.setHeader("Content-Type", contentType || "application/octet-stream");
+    res.setHeader(
+      "Content-Disposition",
+      `${inlineTypes.includes(doc.mimeType) ? "inline" : "attachment"}; filename="${encodeURIComponent(doc.filename)}"`
+    );
+    fs.createReadStream(doc.storedPath).pipe(res);
   } catch (err) {
     next(err);
   }
