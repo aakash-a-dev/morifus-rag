@@ -257,10 +257,13 @@ function normalizeMarkdown(content: string): string {
   const lines = content.split("\n");
   const out: string[] = [];
   const isListItem = (line: string) => /^\s*([-*+]|\d+[.)])\s+/.test(line);
-  const isHeadingLike = (line: string) => /^\s*(\*\*[^*]+\*\*:?|#{1,6}\s)/.test(line);
+  const boldOnlyHeading = /^\s*\*\*([^*]+?)\*\*:?\s*$/;
+  const isHeadingLike = (line: string) => boldOnlyHeading.test(line) || /^\s*#{1,6}\s/.test(line);
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    let line = lines[i];
+    const boldMatch = line.match(boldOnlyHeading);
+    if (boldMatch) line = `### ${boldMatch[1]}`;
     const prev = out[out.length - 1];
     const needsBlankBefore =
       (isListItem(line) && prev !== undefined && prev.trim() !== "" && !isListItem(prev)) ||
@@ -275,10 +278,11 @@ function MarkdownContent({ content, invert }: { content: string; invert?: boolea
   return (
     <div
       className={cn(
-        "space-y-2.5 text-sm leading-relaxed",
-        "[&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-4.5 [&_ol]:pl-4.5",
-        "[&_li]:mt-1 [&_strong]:font-semibold [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs",
-        "[&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_h1]:mt-3 [&_h2]:mt-3 [&_h3]:mt-3",
+        "text-sm leading-relaxed",
+        "[&>*]:mt-0 [&>*+*]:mt-3",
+        "[&_p]:m-0 [&_ul]:m-0 [&_ol]:m-0 [&_ul]:list-outside [&_ol]:list-outside [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5",
+        "[&_li]:mt-1.5 [&_li]:pl-1 [&_li_p]:m-0 [&_strong]:font-semibold [&_code]:rounded [&_code]:bg-secondary [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-xs",
+        "[&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_h1]:font-semibold [&_h2]:font-semibold [&_h3]:font-semibold [&_h1]:mt-4 [&_h2]:mt-4 [&_h3]:mt-4 [&_h1]:mb-1 [&_h2]:mb-1 [&_h3]:mb-1 [&_h1]:first:mt-0 [&_h2]:first:mt-0 [&_h3]:first:mt-0",
         invert && "[&_code]:bg-primary-foreground/15"
       )}
     >
