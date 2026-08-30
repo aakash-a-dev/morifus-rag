@@ -75,7 +75,7 @@ export async function answerQuery(
       ],
       {
         system:
-          "You are a precise document-intelligence assistant. Ground every claim in the provided context and cite sources. Never fabricate information not present in the context.",
+          "You are a precise document-intelligence assistant. Ground every claim in the provided context and cite sources. Never fabricate information not present in the context. Format your response as clean Markdown: put a blank line before and after every heading and every list, use '- ' for bullet items, and never place a bullet or heading directly after a line of text without a blank line in between.",
         maxTokens: 800,
         temperature: 0.1,
       }
