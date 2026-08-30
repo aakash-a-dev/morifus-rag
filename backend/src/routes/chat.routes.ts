@@ -32,6 +32,31 @@ chatRouter.post("/ask", validateBody(askSchema), async (req, res, next) => {
   }
 });
 
+chatRouter.get("/conversations", async (req, res, next) => {
+  try {
+    const workspaceId = req.workspaceId!;
+    const conversations = await prisma.conversation.findMany({
+      where: { workspaceId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        messages: { orderBy: { createdAt: "desc" }, take: 1 },
+        _count: { select: { messages: true } },
+      },
+    });
+    res.json(
+      conversations.map((c) => ({
+        id: c.id,
+        title: c.title,
+        createdAt: c.createdAt,
+        lastMessageAt: c.messages[0]?.createdAt ?? c.createdAt,
+        messageCount: c._count.messages,
+      }))
+    );
+  } catch (err) {
+    next(err);
+  }
+});
+
 chatRouter.get("/conversations/:id/messages", async (req, res, next) => {
   try {
     const conversation = await prisma.conversation.findFirst({
@@ -43,7 +68,38 @@ chatRouter.get("/conversations/:id/messages", async (req, res, next) => {
       where: { conversationId: req.params.id },
       orderBy: { createdAt: "asc" },
     });
-    res.json(messages);
+
+    const allChunkIds = [...new Set(messages.flatMap((m) => m.citedChunkIds))];
+    const chunks = allChunkIds.length
+      ? await prisma.chunk.findMany({
+          where: { id: { in: allChunkIds } },
+          select: { id: true, filename: true, page: true, section: true, content: true, documentId: true },
+        })
+      : [];
+    const chunkById = new Map(chunks.map((c) => [c.id, c]));
+
+    res.json(
+      messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        confidence: m.confidence,
+        fromCache: m.fromCache,
+        createdAt: m.createdAt,
+        citations: m.citedChunkIds
+          .map((id) => chunkById.get(id))
+          .filter((c): c is NonNullable<typeof c> => Boolean(c))
+          .map((c) => ({
+            chunkId: c.id,
+            documentId: c.documentId,
+            filename: c.filename,
+            page: c.page,
+            section: c.section,
+            similarity: 0,
+            excerpt: c.content.slice(0, 240),
+          })),
+      }))
+    );
   } catch (err) {
     next(err);
   }

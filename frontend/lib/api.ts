@@ -68,6 +68,24 @@ export interface ChatResponse {
   trace: { retrievedChunks: { chunkId: string; filename: string; similarity: number; rerankScore: number }[] };
 }
 
+export interface ConversationSummary {
+  id: string;
+  title: string | null;
+  createdAt: string;
+  lastMessageAt: string;
+  messageCount: number;
+}
+
+export interface StoredMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  confidence: number | null;
+  fromCache: boolean;
+  createdAt: string;
+  citations: Citation[];
+}
+
 // Workspace management - not scoped to any single workspace.
 export const workspaceApi = {
   create: (name: string) => request<WorkspaceDto>("/api/workspaces", { method: "POST", body: JSON.stringify({ name }) }),
@@ -96,6 +114,9 @@ export function createWorkspaceApi(slug: string) {
         method: "POST",
         body: JSON.stringify({ query, conversationId, documentIds }),
       }),
+    listConversations: () => request<ConversationSummary[]>(`${base}/chat/conversations`),
+    getConversationMessages: (conversationId: string) =>
+      request<StoredMessage[]>(`${base}/chat/conversations/${conversationId}/messages`),
     listContradictions: (status?: string) =>
       request<any[]>(`${base}/contradictions${status ? `?status=${status}` : ""}`),
     updateContradictionStatus: (id: string, status: "resolved" | "false_positive" | "open") =>
